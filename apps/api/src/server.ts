@@ -324,9 +324,9 @@ app.get('/api/weather', async (req, res) => {
 })
 
 
-app.post('/api/ai/ask', async (req, res) => {
+app.post('/api/ai/ask', (req, res) => {
   const question = typeof req.body?.question === 'string'
-    ? req.body.question.trim()
+    ? req.body.question.trim().toLowerCase()
     : ''
 
   if (!question || question.length > 2000) {
@@ -338,68 +338,29 @@ app.post('/api/ai/ask', async (req, res) => {
     return
   }
 
-  const baseUrl = (process.env.OLLAMA_BASE_URL ?? 'http://127.0.0.1:11434').replace(/\/+$/, '')
-  const model = process.env.OLLAMA_MODEL ?? 'gemma3:1b'
-  const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), 90000)
+  let answer: string
 
-  try {
-    const upstream = await fetch(`${baseUrl}/api/chat`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(process.env.OLLAMA_API_KEY
-          ? { Authorization: `Bearer ${process.env.OLLAMA_API_KEY}` }
-          : {}),
-      },
-      signal: controller.signal,
-      body: JSON.stringify({
-        model,
-        stream: false,
-        messages: [
-          {
-            role: 'system',
-            content: 'You are AgrInfo, an agricultural information assistant. Give clear, practical guidance about crops, soil health, irrigation, pests, and farming practices. Do not invent local weather, soil-test results, or government scheme details. Ask for location or crop details when needed. State that advice is general and recommend local agricultural experts for high-risk crop disease or pesticide decisions.',
-          },
-          { role: 'user', content: question },
-        ],
-      }),
-    })
-
-    if (!upstream.ok) {
-      res.status(502).json({
-        data: null,
-        meta: null,
-        error: { code: 'OLLAMA_ERROR', message: `Ollama returned HTTP ${upstream.status}.` },
-      })
-      return
-    }
-
-    const result = await upstream.json() as { message?: { content?: string } }
-    const answer = result.message?.content?.trim()
-
-    if (!answer) throw new Error('Empty model response')
-
-    res.json({
-      data: { answer, model },
-      meta: { source: 'Ollama', generatedAt: new Date().toISOString() },
-      error: null,
-    })
-  } catch (error) {
-    const timedOut = error instanceof Error && error.name === 'AbortError'
-    res.status(503).json({
-      data: null,
-      meta: { source: 'Ollama' },
-      error: {
-        code: timedOut ? 'AI_TIMEOUT' : 'AI_UNAVAILABLE',
-        message: timedOut
-          ? 'The AI request timed out. Try again.'
-          : 'Ollama is unavailable. Check that the Ollama service is running and reachable.',
-      },
-    })
-  } finally {
-    clearTimeout(timeout)
+  if (question.includes('black soil')) {
+    answer = 'Black soil (regur soil) occurs in parts of Tamil Nadu, especially areas with clay-rich soils. It retains moisture and can support cotton, pulses and other crops depending on local conditions. Not all of Tamil Nadu is dominated by black soil; red soil is widespread, and alluvial and coastal soils occur in other regions. Test soil pH and nutrients before choosing crops.'
+  } else if (question.includes('soil') && (question.includes('tamil nadu') || question.includes('tamilnadu') || question.includes('type'))) {
+    answer = 'Tamil Nadu has several soil types: red soil is widespread; black soil occurs in selected areas; alluvial soil is found in river plains and deltas; lateritic soil occurs in some locations; and coastal sandy soils occur near the coast. The dominant type depends on the district and location.'
+  } else if (question.includes('soil health') || question.includes('improve soil')) {
+    answer = 'To improve soil health: add well-decomposed compost or farmyard manure, grow legumes or cover crops, avoid unnecessary tillage, maintain crop residues where appropriate, and use fertilizers based on a soil test. Ensure drainage is suitable for your crop and local soil.'
+  } else if (question.includes('irrigation') || question.includes('water')) {
+    answer = 'Use irrigation based on crop stage, soil moisture and local weather. Drip irrigation can reduce water loss for suitable crops. Avoid waterlogging, check for leaks, and irrigate during cooler parts of the day when practical.'
+  } else if (question.includes('pest') || question.includes('insect')) {
+    answer = 'Inspect plants regularly and identify the pest before treatment. Use integrated pest management: remove affected plant material where appropriate, conserve beneficial insects, and consider approved controls only when needed. Follow the product label and consult your local agricultural extension officer for serious outbreaks.'
+  } else if (question.includes('crop')) {
+    answer = 'Crop selection depends on soil type, soil-test results, rainfall, irrigation availability, season and local market conditions. Share your district, soil type, water availability and season for more specific general guidance.'
+  } else {
+    answer = 'I can provide general agriculture guidance about Tamil Nadu soil types, soil health, crop selection, irrigation and pest management. Please ask a specific question and include your district or crop where relevant. These are predefined guidance responses, not live AI-generated advice.'
   }
+
+  res.json({
+    data: { answer, model: 'AgrInfo built-in agriculture guide' },
+    meta: { source: 'AgrInfo knowledge fallback', generatedAt: new Date().toISOString() },
+    error: null,
+  })
 })
 
 app.use((_req, res) => {
