@@ -264,6 +264,8 @@ function App() {
         </div>
       </section>
 
+      <AgrInfoAssistant />
+
       <section className="explorer-section" id="explore">
         <div className="container explorer">
           <div>
@@ -636,6 +638,81 @@ function StateTopicDetails({ topics }: { topics: StateTopics | undefined }) {
       <div className="topic-extra">
         <div><p className="eyebrow">Farming calendar</p><h3>Important seasons</h3><p>{topics.seasons}</p></div>
         <div><p className="eyebrow">Practical note</p><h3>Good starting practice</h3><p>{topics.practice}</p></div>
+      </div>
+    </section>
+  )
+}
+
+
+function AgrInfoAssistant() {
+  const [question, setQuestion] = useState('')
+  const [answer, setAnswer] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+
+  const ask = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    const text = question.trim()
+    if (!text || busy) return
+
+    setBusy(true)
+    setError('')
+    setAnswer('')
+
+    try {
+      const base = (import.meta.env.VITE_API_URL || 'http://localhost:4000').replace(/\/+$/, '')
+      const response = await fetch(`${base}/api/ai/ask`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question: text }),
+      })
+      const result = await response.json()
+      if (!response.ok) throw new Error(result.error?.message || 'The assistant is temporarily unavailable.')
+      setAnswer(result.data.answer)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not reach the AI assistant.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <section className="ai-section" id="ai-assistant">
+      <div className="container ai-layout">
+        <div>
+          <p className="eyebrow">AGRICULTURE, EXPLAINED</p>
+          <h2>Meet your AgrInfo <em>AI assistant.</em></h2>
+          <p className="section-text">
+            Ask questions about soil health, crop care, irrigation, and farming practices.
+          </p>
+          <p className="ai-disclaimer">
+            AI-generated guidance may not reflect local conditions. Verify important decisions with an agricultural expert.
+          </p>
+        </div>
+        <div className="ai-card">
+          <div className="ai-card-heading">
+            <span className="ai-avatar">✳</span>
+            <div><strong>AgrInfo Assistant</strong><small>Powered by AI</small></div>
+          </div>
+          <form onSubmit={ask} className="ai-form">
+            <label htmlFor="ai-question">What would you like help with?</label>
+            <textarea
+              id="ai-question"
+              value={question}
+              onChange={(event) => setQuestion(event.target.value)}
+              placeholder="e.g. How can I improve soil health?"
+              maxLength={2000}
+              rows={3}
+              required
+            />
+            <button className="button button-primary" type="submit" disabled={busy || !question.trim()}>
+              {busy ? 'Thinking…' : 'Ask AgrInfo →'}
+            </button>
+          </form>
+          {busy && <p className="ai-status" role="status">Preparing your answer…</p>}
+          {error && <p className="ai-error" role="alert">{error}</p>}
+          {answer && <div className="ai-answer" aria-live="polite"><strong>Answer</strong><p>{answer}</p></div>}
+        </div>
       </div>
     </section>
   )

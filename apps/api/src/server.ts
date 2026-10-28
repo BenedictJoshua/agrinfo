@@ -323,6 +323,80 @@ app.get('/api/weather', async (req, res) => {
   }
 })
 
+
+app.post('/api/ai/ask', async (req, res) => {
+  const question = typeof req.body?.question === 'string'
+    ? req.body.question.trim()
+    : ''
+
+  if (!question || question.length > 2000) {
+    res.status(400).json({
+      data: null,
+      meta: null,
+      error: { code: 'INVALID_QUESTION', message: 'Enter a question of up to 2000 characters.' },
+    })
+    return
+  }
+
+  const baseUrl = (process.env.OLLAMA_BASE_URL ?? 'http://127.0.0.1:11434').replace(/\/+$/, '')
+  const model = process.env.OLLAMA_MODEL ?? 'gemma3:1b'
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 90000)
+
+  try {
+    const upstream = await fetch(`${baseUrl}/api/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      signal: controller.signal,
+      body: JSON.stringify({
+        model,
+        stream: false,
+        messages: [
+          {
+            role: 'system',
+            content: 'You are AgrInfo, an agricultural information assistant. Give clear, practical guidance about crops, soil health, irrigation, pests, and farming practices. Do not invent local weather, soil-test results, or government scheme details. Ask for location or crop details when needed. State that advice is general and recommend local agricultural experts for high-risk crop disease or pesticide decisions.',
+          },
+          { role: 'user', content: question },
+        ],
+      }),
+    })
+
+    if (!upstream.ok) {
+      res.status(502).json({
+        data: null,
+        meta: null,
+        error: { code: 'OLLAMA_ERROR', message: `Ollama returned HTTP ${upstream.status}.` },
+      })
+      return
+    }
+
+    const result = await upstream.json() as { message?: { content?: string } }
+    const answer = result.message?.content?.trim()
+
+    if (!answer) throw new Error('Empty model response')
+
+    res.json({
+      data: { answer, model },
+      meta: { source: 'Ollama', generatedAt: new Date().toISOString() },
+      error: null,
+    })
+  } catch (error) {
+    const timedOut = error instanceof Error && error.name === 'AbortError'
+    res.status(503).json({
+      data: null,
+      meta: { source: 'Ollama' },
+      error: {
+        code: timedOut ? 'AI_TIMEOUT' : 'AI_UNAVAILABLE',
+        message: timedOut
+          ? 'The AI request timed out. Try again.'
+          : 'Ollama is unavailable. Check that the Ollama service is running and reachable.',
+      },
+    })
+  } finally {
+    clearTimeout(timeout)
+  }
+})
+
 app.use((_req, res) => {
   res.status(404).json({ data: null, meta: null, error: { code: 'NOT_FOUND', message: 'The requested API route does not exist.' } })
 })
