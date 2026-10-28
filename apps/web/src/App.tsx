@@ -361,7 +361,7 @@ function SignupPage({ language, onBack, onLogin, onSuccess }: { language: Langua
       return
     }
     try {
-      const result = await fetch('/api/auth/signup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) })
+      const result = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/signup`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) })
       const body = await result.text()
       let payload: { data?: User & { message?: string }; error?: { message?: string } }
       try {
@@ -409,7 +409,7 @@ function LoginPage({ language, onBack, onSuccess }: { language: Language; onBack
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     try {
-      const result = await fetch('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password }) })
+      const result = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password }) })
       const body = await result.text()
       let payload: { data?: User; error?: { message?: string } }
       try {
@@ -453,7 +453,7 @@ function ProfilePage({ language, user, onBack, onSaved }: { language: Language; 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     try {
-      const result = await fetch('/api/auth/profile', {
+      const result = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/profile`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),
@@ -524,7 +524,7 @@ function ForgotPasswordPage({ language, onBack, onSuccess }: { language: Languag
   const requestOtp = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     try {
-      const result = await fetch('/api/auth/password-reset/request', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) })
+      const result = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/password-reset/request`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) })
       const payload: { data?: { message?: string }; error?: { message?: string } } = await result.json()
       if (!result.ok) throw new Error(payload.error?.message ?? 'Could not send OTP.')
       setSent(true)
@@ -536,7 +536,7 @@ function ForgotPasswordPage({ language, onBack, onSuccess }: { language: Languag
   const verifyOtp = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     try {
-      const result = await fetch('/api/auth/password-reset/verify', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, otp }) })
+      const result = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/password-reset/verify`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, otp }) })
       const payload: { data?: { message?: string }; error?: { message?: string } } = await result.json()
       if (!result.ok) throw new Error(payload.error?.message ?? 'OTP verification failed.')
       setMessage(payload.data?.message ?? 'OTP verified.')
