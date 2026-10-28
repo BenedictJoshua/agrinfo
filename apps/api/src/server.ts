@@ -346,7 +346,12 @@ app.post('/api/ai/ask', async (req, res) => {
   try {
     const upstream = await fetch(`${baseUrl}/api/chat`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(process.env.OLLAMA_API_KEY
+          ? { Authorization: `Bearer ${process.env.OLLAMA_API_KEY}` }
+          : {}),
+      },
       signal: controller.signal,
       body: JSON.stringify({
         model,
