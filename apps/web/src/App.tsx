@@ -492,7 +492,21 @@ function ProfilePage({ language, user, onBack, onSaved }: { language: Language; 
 
 function AddInfoPage({ language, onBack }: { language: Language; onBack: () => void }) {
   const [form, setForm] = useState({ name: '', age: '', city: '', state: '', information: '' })
+  const [message, setMessage] = useState('')
   const update = (field: keyof typeof form, value: string) => setForm((current) => ({ ...current, [field]: value }))
+  const submitInfo = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    if (!form.name.trim() || !form.age || !form.city.trim() || !form.state) {
+      setMessage('Please fill in your name, age, city, and state.')
+      return
+    }
+    try {
+      localStorage.setItem('agrinfoAdditionalInfo', JSON.stringify(form))
+      setMessage('Information saved on this device for the demo.')
+    } catch {
+      setMessage('Unable to save information in this browser.')
+    }
+  }
   return (
     <main className="auth-page">
       <nav className="nav container" aria-label="Additional information navigation">
@@ -503,13 +517,14 @@ function AddInfoPage({ language, onBack }: { language: Language; onBack: () => v
         <p className="eyebrow">{localized(language, 'Additional information', 'கூடுதல் தகவல்', 'अतिरिक्त जानकारी')}</p>
         <h1>{localized(language, 'Tell us about yourself.', 'உங்களைப் பற்றி சொல்லுங்கள்.', 'अपने बारे में बताएं।')}</h1>
         <p className="auth-intro">{localized(language, 'Fill in the details below to add your farmer information.', 'உங்கள் விவசாயத் தகவலைச் சேர்க்க கீழே உள்ள விவரங்களை நிரப்பவும்.', 'अपनी किसान जानकारी जोड़ने के लिए नीचे दिए गए विवरण भरें।')}</p>
-        <form className="signup-form" onSubmit={(event) => event.preventDefault()}>
+        <form className="signup-form" onSubmit={submitInfo}>
           <label>Name<input value={form.name} onChange={(event) => update('name', event.target.value)} autoComplete="name" /></label>
           <label>Age<input type="number" min="1" max="120" value={form.age} onChange={(event) => update('age', event.target.value)} /></label>
           <label>City<input value={form.city} onChange={(event) => update('city', event.target.value)} autoComplete="address-level2" /></label>
           <label>State<select value={form.state} onChange={(event) => update('state', event.target.value)}><option value="">Select a state</option>{stateProfiles.map(([state]) => <option key={state} value={state}>{state}</option>)}</select></label>
           <label>Tell us your information<textarea value={form.information} onChange={(event) => update('information', event.target.value)} rows={5} placeholder="Share any information you would like us to know." /></label>
-          <p className="form-note">Your information form is ready. Saving this information will be connected next.</p>
+          <button className="button button-primary signup-submit" type="submit">Submit Information</button>
+          {message && <p className="auth-message" role="status">{message}</p>}
         </form>
       </section>
     </main>
